@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">CustomCameraApp</string>
+    <string name="picture">Picture</string>
+    <string name="description_info">Info</string>
+    <string name="request_permission">This sample needs camera permission.</string>
+    <string name="camera_error">This device doesn\'t support Camera2 API.</string>
+
+    <string name="hello">Hello World, CamTestActivity!</string>
+
+    <!-- UI Elements -->
+    <string name="btn_capture">Click</string>
+
+    <!-- Toast Messages -->
+    <string name="camera_not_found">No camera harware found</string>
+    <string name="take_photo_help">Touch anywhere on screen to take picture</string>
+
+</resources>
