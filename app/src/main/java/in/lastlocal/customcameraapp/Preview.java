@@ -4,10 +4,12 @@ package in.lastlocal.customcameraapp;
  * Created by user on 06-Jul-17.
  */
 
+import android.app.Activity;
 import android.content.Context;
 import android.hardware.Camera;
 import android.hardware.Camera.Size;
 import android.util.Log;
+import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -25,10 +27,15 @@ public class Preview extends ViewGroup implements SurfaceHolder.Callback {
 	Size mPreviewSize;
 	List<Size> mSupportedPreviewSizes;
 	Camera mCamera;
+	boolean isPreviewRunning = true;
+	Context context;
+	Activity activity;
 
-	Preview(Context context, SurfaceView sv) {
+	Preview(Context context, Activity activity, SurfaceView sv) {
 		super(context);
 
+		this.context = context;
+		this.activity = activity;
 		mSurfaceView = sv;
 //        addView(mSurfaceView);
 
@@ -126,6 +133,9 @@ public class Preview extends ViewGroup implements SurfaceHolder.Callback {
 		}
 	}
 
+	public Camera getmCamera() {
+		return mCamera;
+	}
 
 	private Size getOptimalPreviewSize(List<Size> sizes, int w, int h) {
 		final double ASPECT_TOLERANCE = 0.1;
@@ -171,5 +181,69 @@ public class Preview extends ViewGroup implements SurfaceHolder.Callback {
 			mCamera.startPreview();
 		}
 	}
+
+
+	public void switchCamera(int currentCameraId) {
+
+		//here write code for switch the camera
+		if (isPreviewRunning) {
+			mCamera.stopPreview();
+		}
+//NB: if you don't release the current camera before switching, you app will crash
+		mCamera.release();
+
+
+//swap the id of the camera to be used
+		if (currentCameraId == Camera.CameraInfo.CAMERA_FACING_BACK) {
+			currentCameraId = Camera.CameraInfo.CAMERA_FACING_FRONT;
+		} else {
+			currentCameraId = Camera.CameraInfo.CAMERA_FACING_BACK;
+		}
+		mCamera = Camera.open(currentCameraId);
+
+		setCameraDisplayOrientation(activity, currentCameraId, mCamera);
+		try {
+
+			mCamera.setPreviewDisplay(mHolder);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		mCamera.startPreview();
+
+	}
+
+	public static void setCameraDisplayOrientation(Activity activity,
+												   int cameraId, Camera camera) {
+		Camera.CameraInfo info =
+				new Camera.CameraInfo();
+		Camera.getCameraInfo(cameraId, info);
+		int rotation = activity.getWindowManager().getDefaultDisplay()
+				.getRotation();
+		int degrees = 0;
+		switch (rotation) {
+			case Surface.ROTATION_0:
+				degrees = 0;
+				break;
+			case Surface.ROTATION_90:
+				degrees = 90;
+				break;
+			case Surface.ROTATION_180:
+				degrees = 180;
+				break;
+			case Surface.ROTATION_270:
+				degrees = 270;
+				break;
+		}
+
+		int result;
+		if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+			result = (info.orientation + degrees) % 360;
+			result = (360 - result) % 360;  // compensate the mirror
+		} else {  // back-facing
+			result = (info.orientation - degrees + 360) % 360;
+		}
+		camera.setDisplayOrientation(result);
+	}
+
 
 }

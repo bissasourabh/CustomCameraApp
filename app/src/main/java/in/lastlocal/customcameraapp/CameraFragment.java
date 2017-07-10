@@ -1,5 +1,6 @@
 package in.lastlocal.customcameraapp;
 
+import android.app.Fragment;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -10,22 +11,15 @@ import android.hardware.Camera;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Environment;
 import android.support.annotation.Nullable;
-import android.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.Window;
-import android.view.WindowManager;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
-import android.widget.Spinner;
 import android.widget.Toast;
 
 import java.io.File;
@@ -63,7 +57,7 @@ public class CameraFragment extends Fragment {
 		view = inflater.inflate(R.layout.fragment_camera, container, false);
 
 		hasFlash = ctx.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
-		preview = new Preview(ctx, (SurfaceView) view.findViewById(R.id.surfaceView));
+		preview = new Preview(ctx, getActivity(), (SurfaceView) view.findViewById(R.id.surfaceView));
 		preview.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
 		rootLayout = ((FrameLayout) view.findViewById(R.id.layout));
@@ -74,37 +68,38 @@ public class CameraFragment extends Fragment {
 
 		buttonClick = (Button) view.findViewById(R.id.button_capture);
 		buttonFlash = (Button) view.findViewById(R.id.btn_flash);
+		buttonRotate = (Button) view.findViewById(R.id.btn_rotate);
+		buttonRotate.setOnClickListener(new View.OnClickListener() {
+			@Override
+			public void onClick(View view) {
 
-		// Spinner for camera ID
-		Spinner spinnerCamera = (Spinner) view.findViewById(R.id.spinner_camera);
-		ArrayAdapter<String> adapter;
-		adapter = new ArrayAdapter<String>(ctx, android.R.layout.simple_spinner_item);
-		adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-		spinnerCamera.setAdapter(adapter);
-		spinnerCamera.setOnItemSelectedListener((AdapterView.OnItemSelectedListener) this);
-		adapter.add("0");
-		adapter.add("1");
-		adapter.add("2");
 
-//		buttonRotate = (Button) view.findViewById(R.id.btn_rotate);
-//		buttonRotate.setOnClickListener(new View.OnClickListener() {
-//			@Override
-//			public void onClick(View view) {
-//				if (Camera.getNumberOfCameras() < 2)
-//					return;
+//				camera.stopPreview();
 //
-//				resetView();
+////NB: if you don't release the current camera before switching, you app will crash
+//				camera.release();
+//				camera = null;
+////swap the id of the camera to be used
+//				if (mCameraId == Camera.CameraInfo.CAMERA_FACING_BACK) {
+//					mCameraId = Camera.CameraInfo.CAMERA_FACING_FRONT;
+//				} else {
+//					mCameraId = Camera.CameraInfo.CAMERA_FACING_BACK;
+//				}
+//				camera = Camera.open(mCameraId);
 //
-//				if (!hasPrimaryCamera)
-//					mCameraId = 1;
-//				else
-//					mCameraId = 0;
-//
-//				rotateScreen(mCameraId);
-//
-//			}
-//		});
-		buttonFlash.setOnClickListener(new View.OnClickListener() {
+//				setCameraDisplayOrientation(getActivity(), mCameraId, camera);
+//				preview.setCamera(camera);
+//				camera.startPreview();
+
+
+				preview.switchCamera(Camera.CameraInfo.CAMERA_FACING_BACK);
+
+
+			}
+		});
+		buttonFlash.setOnClickListener(new View.OnClickListener()
+
+		{
 			@Override
 			public void onClick(View view) {
 				if (hasFlash) {
@@ -126,45 +121,19 @@ public class CameraFragment extends Fragment {
 
 			}
 		});
-		buttonClick.setOnClickListener(new View.OnClickListener() {
+		buttonClick.setOnClickListener(new View.OnClickListener()
+
+		{
 
 			@Override
 			public void onClick(View arg0) {
-				camera.takePicture(shutterCallback, rawCallback, jpegCallback);
+
+				preview.getmCamera().takePicture(shutterCallback, rawCallback, jpegCallback);
 			}
 		});
 
-//		preview.setOnClickListener(new OnClickListener() {
-//
-//			@Override
-//			public void onClick(View arg0) {
-//				camera.takePicture(shutterCallback, rawCallback, jpegCallback);
-//			}
-//		});
 
 		Toast.makeText(ctx, getString(R.string.take_photo_help), Toast.LENGTH_LONG).show();
-
-		//		buttonClick = (Button) findViewById(R.id.btnCapture);
-		//
-		//		buttonClick.setOnClickListener(new OnClickListener() {
-		//			public void onClick(View v) {
-		////				preview.camera.takePicture(shutterCallback, rawCallback, jpegCallback);
-		//				camera.takePicture(shutterCallback, rawCallback, jpegCallback);
-		//			}
-		//		});
-		//
-		//		buttonClick.setOnLongClickListener(new OnLongClickListener(){
-		//			@Override
-		//			public boolean onLongClick(View arg0) {
-		//				camera.autoFocus(new AutoFocusCallback(){
-		//					@Override
-		//					public void onAutoFocus(boolean arg0, Camera arg1) {
-		//						//camera.takePicture(shutterCallback, rawCallback, jpegCallback);
-		//					}
-		//				});
-		//				return true;
-		//			}
-		//		});
 
 		return view;
 	}
@@ -196,8 +165,9 @@ public class CameraFragment extends Fragment {
 	}
 
 	private void resetCam() {
-		camera.startPreview();
-		preview.setCamera(camera);
+		preview.getmCamera().startPreview();
+
+//		preview.setCamera(camera);
 	}
 
 	private void refreshGallery(File file) {
@@ -243,6 +213,7 @@ public class CameraFragment extends Fragment {
 			if (outFile.exists()) {
 
 				Bitmap myBitmap = BitmapFactory.decodeFile(outFile.getAbsolutePath());
+				myBitmap = rotateBitmap(myBitmap, 90);
 				imageView.setImageBitmap(myBitmap);
 
 			}
@@ -277,16 +248,20 @@ public class CameraFragment extends Fragment {
 		}
 	}
 
-	private void resetView() {
-		preview.stop();
-		rootLayout.removeView(preview);
-	}
-
-	private void rotateScreen(int cameraId) {
-
-		preview = new Preview(ctx, (SurfaceView) view.findViewById(R.id.surfaceView));
-		preview.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-		rootLayout.addView(preview);
-	}
+//	private void resetView() {
+//		if (camera != null) {
+//			camera.stopPreview();
+//			preview.setCamera(null);
+//			camera.release();
+//			camera = null;
+//		}
+//	}
+//
+//	private void rotateScreen(int cameraId) {
+//
+//		preview = new Preview(ctx, (SurfaceView) view.findViewById(R.id.surfaceView));
+//		preview.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+//		rootLayout.addView(preview);
+//	}
 
 }
