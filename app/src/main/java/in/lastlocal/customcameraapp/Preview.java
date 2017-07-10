@@ -6,6 +6,7 @@ package in.lastlocal.customcameraapp;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.hardware.Camera;
 import android.hardware.Camera.Size;
 import android.util.Log;
@@ -14,6 +15,7 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import java.io.IOException;
 import java.util.List;
@@ -30,6 +32,8 @@ public class Preview extends ViewGroup implements SurfaceHolder.Callback {
 	boolean isPreviewRunning = true;
 	Context context;
 	Activity activity;
+	boolean hasFlash, isFlashOn = false, hasPrimaryCamera = true;
+	int mCameraID;
 
 	Preview(Context context, Activity activity, SurfaceView sv) {
 		super(context);
@@ -137,6 +141,10 @@ public class Preview extends ViewGroup implements SurfaceHolder.Callback {
 		return mCamera;
 	}
 
+	public int getCameraID() {
+		return mCameraID;
+	}
+
 	private Size getOptimalPreviewSize(List<Size> sizes, int w, int h) {
 		final double ASPECT_TOLERANCE = 0.1;
 		double targetRatio = (double) w / h;
@@ -208,8 +216,36 @@ public class Preview extends ViewGroup implements SurfaceHolder.Callback {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+
+		mCameraID = currentCameraId;
 		mCamera.startPreview();
 
+	}
+
+	public void setflash(int currentCameraId) {
+
+		hasFlash = context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
+
+		if (currentCameraId == Camera.CameraInfo.CAMERA_FACING_BACK) {
+			if (hasFlash) {
+				Camera.Parameters p = mCamera.getParameters();
+				if (!isFlashOn) {
+					isFlashOn = true;
+					p.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
+					mCamera.setParameters(p);
+					mCamera.startPreview();
+
+				} else {
+					isFlashOn = false;
+					p.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
+					mCamera.setParameters(p);
+					mCamera.startPreview();
+
+				}
+			}
+		}
+
+		mCameraID = currentCameraId;
 	}
 
 	public static void setCameraDisplayOrientation(Activity activity,
@@ -245,5 +281,30 @@ public class Preview extends ViewGroup implements SurfaceHolder.Callback {
 		camera.setDisplayOrientation(result);
 	}
 
+
+	public void onResume() {
+
+		int numCams = Camera.getNumberOfCameras();
+		if (numCams > 0) {
+			try {
+				mCamera = Camera.open(0);
+				mCamera.startPreview();
+				setCamera(mCamera);
+			} catch (RuntimeException ex) {
+				Toast.makeText(context, context.getResources().getString(R.string.camera_not_found), Toast.LENGTH_LONG).show();
+			}
+		}
+
+	}
+
+	public void onPause() {
+		if (mCamera != null) {
+			mCamera.stopPreview();
+			mCamera.release();
+			mCamera = null;
+//			setCamera(null);
+		}
+
+	}
 
 }

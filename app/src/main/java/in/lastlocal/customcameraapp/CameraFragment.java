@@ -3,7 +3,6 @@ package in.lastlocal.customcameraapp;
 import android.app.Fragment;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
@@ -40,7 +39,7 @@ public class CameraFragment extends Fragment {
 	Context ctx;
 	ImageView imageView;
 	private int mCameraId = 0;
-	boolean hasFlash, isFlashOn = false, hasPrimaryCamera = true;
+	//	boolean hasFlash, isFlashOn = false, hasPrimaryCamera = true;
 	FrameLayout rootLayout;
 	View view;
 
@@ -56,7 +55,7 @@ public class CameraFragment extends Fragment {
 		ctx = getActivity();
 		view = inflater.inflate(R.layout.fragment_camera, container, false);
 
-		hasFlash = ctx.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
+//		hasFlash = ctx.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH);
 		preview = new Preview(ctx, getActivity(), (SurfaceView) view.findViewById(R.id.surfaceView));
 		preview.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
@@ -92,7 +91,14 @@ public class CameraFragment extends Fragment {
 //				camera.startPreview();
 
 
-				preview.switchCamera(Camera.CameraInfo.CAMERA_FACING_BACK);
+				preview.switchCamera(mCameraId);
+
+				mCameraId = preview.getCameraID();
+
+				if (mCameraId == Camera.CameraInfo.CAMERA_FACING_FRONT)
+					buttonFlash.setEnabled(false);
+				else
+					buttonFlash.setEnabled(true);
 
 
 			}
@@ -102,23 +108,8 @@ public class CameraFragment extends Fragment {
 		{
 			@Override
 			public void onClick(View view) {
-				if (hasFlash) {
-					Camera.Parameters p = camera.getParameters();
-					if (!isFlashOn) {
-						isFlashOn = true;
-						p.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
-						camera.setParameters(p);
-						camera.startPreview();
 
-					} else {
-						isFlashOn = false;
-						p.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
-						camera.setParameters(p);
-						camera.startPreview();
-
-					}
-				}
-
+				preview.setflash(Camera.CameraInfo.CAMERA_FACING_BACK);
 			}
 		});
 		buttonClick.setOnClickListener(new View.OnClickListener()
@@ -141,33 +132,18 @@ public class CameraFragment extends Fragment {
 	@Override
 	public void onResume() {
 		super.onResume();
-		int numCams = Camera.getNumberOfCameras();
-		if (numCams > 0) {
-			try {
-				camera = Camera.open(0);
-				camera.startPreview();
-				preview.setCamera(camera);
-			} catch (RuntimeException ex) {
-				Toast.makeText(ctx, getString(R.string.camera_not_found), Toast.LENGTH_LONG).show();
-			}
-		}
+
+		preview.onResume();
 	}
 
 	@Override
 	public void onPause() {
-		if (camera != null) {
-			camera.stopPreview();
-			preview.setCamera(null);
-			camera.release();
-			camera = null;
-		}
 		super.onPause();
+		preview.onPause();
 	}
 
 	private void resetCam() {
 		preview.getmCamera().startPreview();
-
-//		preview.setCamera(camera);
 	}
 
 	private void refreshGallery(File file) {
@@ -213,7 +189,10 @@ public class CameraFragment extends Fragment {
 			if (outFile.exists()) {
 
 				Bitmap myBitmap = BitmapFactory.decodeFile(outFile.getAbsolutePath());
-				myBitmap = rotateBitmap(myBitmap, 90);
+				if (mCameraId == 0)
+					myBitmap = rotateBitmap(myBitmap, 90);
+				else
+					myBitmap = rotateBitmap(myBitmap, 270);
 				imageView.setImageBitmap(myBitmap);
 
 			}
